@@ -48,7 +48,7 @@ def main():
         pygame.draw.circle(screen, WHITE, (HALF_W, HALF_H), SWEEP_LENGTH/2, 1)
 
         # t += (1 % FPS) / FPS # loop
-        t = 2 * math.atan(math.tan(time.monotonic() / 2)) # loop
+        t = 2 * math.atan(math.tan((time.monotonic() - PI) / 2)) + PI # loop
 
         pygame.draw.arc(screen, WHITE, ((WIDTH-200)/2, 10, 200,50), 0+t, PI+t)
 
