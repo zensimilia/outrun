@@ -8,6 +8,9 @@ HEIGHT = 200
 HALF_W = WIDTH / 2
 HALF_H = HEIGHT - 20
 
+PIVOT_X = WIDTH / 2
+PIVOT_Y = HEIGHT - 40
+
 FPS = 30
 
 WHITE = (255, 255, 255)
@@ -15,8 +18,17 @@ BLACK = (0, 0, 0)
 
 TWO_PI = math.pi * 2
 PI = math.pi
-SWEEP_LENGTH = 128
-DOTS = 12
+SWEEP_LENGTH = 145
+DOTS = 16
+
+
+def send_signal(surface: pygame.Surface, delay):
+    t = time.time() % delay / 2
+    r = 500 * (math.tan(PI / 2 * t))
+    pygame.draw.circle(surface, WHITE, (PIVOT_X, PIVOT_Y), r, 3)
+    pygame.draw.circle(surface, WHITE, (PIVOT_X, PIVOT_Y), r - 16, 1)
+    pygame.draw.circle(surface, WHITE, (PIVOT_X, PIVOT_Y), r - 32, 1)
+
 
 def main():
     """
@@ -24,15 +36,16 @@ def main():
     """
     pygame.init()
     pygame.font.init()
-    my_font = pygame.font.SysFont('Comic Sans MS', 10)
-    mainsurface = pygame.display.set_mode((WIDTH, HEIGHT), HWSURFACE | DOUBLEBUF | RESIZABLE)
+    # my_font = pygame.font.SysFont('Comic Sans MS', 10)
+    mainsurface = pygame.display.set_mode(
+        (WIDTH, HEIGHT), HWSURFACE | DOUBLEBUF | RESIZABLE
+    )
     screen = pygame.Surface((WIDTH, HEIGHT))
-    pygame.display.set_caption("Circle")
+    pygame.display.set_caption("Aliens Motion Tracker")
     clock = pygame.time.Clock()
-    t=0
+    t = 0
 
     running = True
-
 
     while running:
         clock.tick(FPS)
@@ -40,38 +53,72 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
+        t = 2 * math.atan(math.tan((time.monotonic() - PI) / 2)) + PI  # loop
+        # t = 0
+
         screen.fill(BLACK)
 
-        pygame.draw.circle(screen, WHITE, (HALF_W, HALF_H), SWEEP_LENGTH, 1)
-        # pygame.draw.circle(screen, WHITE, (HALF_W, HALF_H), SWEEP_LENGTH/4, 1)
-        # pygame.draw.circle(screen, WHITE, (HALF_W, HALF_H), SWEEP_LENGTH/4*2, 1)
-        pygame.draw.circle(screen, WHITE, (HALF_W, HALF_H), SWEEP_LENGTH/2, 1)
+        pygame.draw.circle(
+            screen, WHITE, (PIVOT_X, PIVOT_Y), SWEEP_LENGTH - 3, 1
+        )
+        pygame.draw.circle(
+            screen, WHITE, (PIVOT_X, PIVOT_Y), SWEEP_LENGTH / 2, 1
+        )
 
-        # t += (1 % FPS) / FPS # loop
-        t = 2 * math.atan(math.tan((time.monotonic() - PI) / 2)) + PI # loop
-
-        pygame.draw.arc(screen, WHITE, ((WIDTH-200)/2, 10, 200,50), 0+t, PI+t)
+        for n in range(4):
+            shift = n * 90
+            pygame.draw.arc(
+                screen,
+                WHITE,
+                (
+                    PIVOT_X - SWEEP_LENGTH / 2 - 5,
+                    PIVOT_Y - SWEEP_LENGTH / 2 - 5,
+                    SWEEP_LENGTH + 10,
+                    SWEEP_LENGTH + 10,
+                ),
+                TWO_PI / 360 * (75 + shift) - t,
+                TWO_PI / 360 * (105 + shift) - t,
+            )
+            pygame.draw.arc(
+                screen,
+                WHITE,
+                (
+                    PIVOT_X - SWEEP_LENGTH + 10,
+                    PIVOT_Y - SWEEP_LENGTH + 10,
+                    SWEEP_LENGTH * 2 - 20,
+                    SWEEP_LENGTH * 2 - 20,
+                ),
+                TWO_PI / 360 * (22.5 + shift) - t,
+                TWO_PI / 360 * (67.5 + shift) - t,
+            )
 
         for i in range(DOTS):
             # z = i * (360/DOTS) * ( TWO_PI / 360 ) - (2*math.atan(math.tan(t/2)))
-            z = i * (360/DOTS) * ( TWO_PI / 360 ) - t
-            text_surface = my_font.render(f'{z}', False, WHITE)
-            px = int((SWEEP_LENGTH) * math.sin(z) + HALF_W)
-            py = int((SWEEP_LENGTH) * math.cos(z) + HALF_H)
-            # screen.blit(text_surface, (px,py))
-            if (i % (DOTS/4)):
-                d = -40
-            else:
-                # pygame.draw.line(screen, WHITE, (HALF_W,HALF_H), (px, py))
-                d = -(SWEEP_LENGTH/3*2)
+            z = i * (360 / DOTS) * (TWO_PI / 360) - t
+            px = int((SWEEP_LENGTH) * math.sin(z) + PIVOT_X)
+            py = int((SWEEP_LENGTH) * math.cos(z) + PIVOT_Y)
 
-            pygame.draw.line(screen, WHITE, (px,py), ((d)*math.sin(z) + px, (d)*math.cos(-z)+py))
-            # screen.set_at((px,py), WHITE)
+            d = -75
+            if i % (DOTS / 8):
+                d = -10
+            if (i % (DOTS / 4)) and not (i % (DOTS / 8)):
+                d = -(SWEEP_LENGTH / 3 * 2)
+                pygame.draw.circle(
+                    screen,
+                    WHITE,
+                    ((d - 4) * math.sin(z) + px, (d - 4) * math.cos(-z) + py),
+                    4,
+                    1,
+                )
 
-        x = SWEEP_LENGTH * math.sin(-t) + HALF_W
-        y = SWEEP_LENGTH * math.cos(t) + HALF_H
+            pygame.draw.line(
+                screen,
+                WHITE,
+                (px, py),
+                ((d) * math.sin(z) + px, (d) * math.cos(-z) + py),
+            )
 
-        # pygame.draw.line(screen,WHITE,(HALF_W, HALF_H), (x,y), 3)
+        send_signal(screen, delay=2)
 
         # Scale and update display
         w, h = pygame.display.get_surface().get_size()
@@ -79,6 +126,7 @@ def main():
         pygame.display.update()
 
     pygame.quit()
+
 
 if __name__ == '__main__':
     main()
