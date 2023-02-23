@@ -1,12 +1,13 @@
 import math
 import time
 import pygame
+import random
 from pygame.locals import HWSURFACE, DOUBLEBUF, RESIZABLE
 
 WIDTH = 360
 HEIGHT = 200
 HALF_W = WIDTH / 2
-HALF_H = HEIGHT - 20
+HALF_H = HEIGHT / 2
 
 PIVOT_X = WIDTH / 2
 PIVOT_Y = HEIGHT - 40
@@ -16,10 +17,11 @@ FPS = 30
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
-TWO_PI = math.pi * 2
 PI = math.pi
-SWEEP_LENGTH = 145
-DOTS = 16
+TWO_PI = math.pi * 2
+RADIUS = 145
+SEGMENTS = 16
+SPEEDS = [0.1, 0.5, -1, -0.5, 1, 3]
 
 
 def send_signal(surface: pygame.Surface, delay):
@@ -28,6 +30,41 @@ def send_signal(surface: pygame.Surface, delay):
     pygame.draw.circle(surface, WHITE, (PIVOT_X, PIVOT_Y), r, 3)
     pygame.draw.circle(surface, WHITE, (PIVOT_X, PIVOT_Y), r - 16, 1)
     pygame.draw.circle(surface, WHITE, (PIVOT_X, PIVOT_Y), r - 32, 1)
+
+
+def draw_arcs(surface: pygame.Surface, time):
+    for n in range(4):
+        shift = n * 90
+        pygame.draw.arc(
+            surface,
+            WHITE,
+            (
+                PIVOT_X - RADIUS / 2 - 5,
+                PIVOT_Y - RADIUS / 2 - 5,
+                RADIUS + 10,
+                RADIUS + 10,
+            ),
+            TWO_PI / 360 * (75 + shift) - time,
+            TWO_PI / 360 * (105 + shift) - time,
+        )
+        pygame.draw.arc(
+            surface,
+            WHITE,
+            (
+                PIVOT_X - RADIUS + 10,
+                PIVOT_Y - RADIUS + 10,
+                RADIUS * 2 - 20,
+                RADIUS * 2 - 20,
+            ),
+            TWO_PI / 360 * (22.5 + shift) - time,
+            TWO_PI / 360 * (67.5 + shift) - time,
+        )
+
+
+def update(current, target, dt, duration):
+    delta = target - current
+    delta = delta * (duration / dt)
+    return current + delta
 
 
 def main():
@@ -43,66 +80,50 @@ def main():
     screen = pygame.Surface((WIDTH, HEIGHT))
     pygame.display.set_caption("Aliens Motion Tracker")
     clock = pygame.time.Clock()
-    t = 0
+    t = 1.0
+    dt = time.time()
+    rand = 0
+    speed = 1.0
 
     running = True
 
     while running:
-        clock.tick(FPS)
+        ms = clock.tick(FPS)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-        t = 2 * math.atan(math.tan((time.monotonic() - PI) / 2)) + PI  # loop
-        # t = 0
-
         screen.fill(BLACK)
 
-        pygame.draw.circle(
-            screen, WHITE, (PIVOT_X, PIVOT_Y), SWEEP_LENGTH - 3, 1
-        )
-        pygame.draw.circle(
-            screen, WHITE, (PIVOT_X, PIVOT_Y), SWEEP_LENGTH / 2, 1
-        )
+        # t = 2 * math.atan(math.tan((time.monotonic() - PI) / 2)) + PI  # loop
+        # t = 0
+        # t = time.time()
 
-        for n in range(4):
-            shift = n * 90
-            pygame.draw.arc(
-                screen,
-                WHITE,
-                (
-                    PIVOT_X - SWEEP_LENGTH / 2 - 5,
-                    PIVOT_Y - SWEEP_LENGTH / 2 - 5,
-                    SWEEP_LENGTH + 10,
-                    SWEEP_LENGTH + 10,
-                ),
-                TWO_PI / 360 * (75 + shift) - t,
-                TWO_PI / 360 * (105 + shift) - t,
-            )
-            pygame.draw.arc(
-                screen,
-                WHITE,
-                (
-                    PIVOT_X - SWEEP_LENGTH + 10,
-                    PIVOT_Y - SWEEP_LENGTH + 10,
-                    SWEEP_LENGTH * 2 - 20,
-                    SWEEP_LENGTH * 2 - 20,
-                ),
-                TWO_PI / 360 * (22.5 + shift) - t,
-                TWO_PI / 360 * (67.5 + shift) - t,
-            )
+        if time.time() >= dt + 1:
+            rand = random.choice(SPEEDS)
+            dt = time.time()
 
-        for i in range(DOTS):
-            # z = i * (360/DOTS) * ( TWO_PI / 360 ) - (2*math.atan(math.tan(t/2)))
-            z = i * (360 / DOTS) * (TWO_PI / 360) - t
-            px = int((SWEEP_LENGTH) * math.sin(z) + PIVOT_X)
-            py = int((SWEEP_LENGTH) * math.cos(z) + PIVOT_Y)
+        speed = update(speed, rand, ms, 0.5)
+        t = speed
+
+        pygame.draw.circle(screen, WHITE, (PIVOT_X, PIVOT_Y), RADIUS - 3, 1)
+        pygame.draw.circle(screen, WHITE, (PIVOT_X, PIVOT_Y), RADIUS / 2, 1)
+
+        # draw arcs
+        draw_arcs(screen, t)
+
+        # draw segments
+        for i in range(SEGMENTS):
+            # z = i * (360/SEGMENTS) * ( TWO_PI / 360 ) - (2*math.atan(math.tan(t/2)))
+            z = i * (360 / SEGMENTS) * (TWO_PI / 360) - t
+            px = int(RADIUS * math.sin(z) + PIVOT_X)
+            py = int(RADIUS * math.cos(z) + PIVOT_Y)
 
             d = -75
-            if i % (DOTS / 8):
+            if i % (SEGMENTS / 8):
                 d = -10
-            if (i % (DOTS / 4)) and not (i % (DOTS / 8)):
-                d = -(SWEEP_LENGTH / 3 * 2)
+            if (i % (SEGMENTS / 4)) and not (i % (SEGMENTS / 8)):
+                d = -(RADIUS / 3 * 2)
                 pygame.draw.circle(
                     screen,
                     WHITE,
@@ -115,7 +136,7 @@ def main():
                 screen,
                 WHITE,
                 (px, py),
-                ((d) * math.sin(z) + px, (d) * math.cos(-z) + py),
+                (d * math.sin(z) + px, d * math.cos(-z) + py),
             )
 
         send_signal(screen, delay=2)
